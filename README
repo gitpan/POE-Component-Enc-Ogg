@@ -1,4 +1,4 @@
-POE/Component/Enc/Ogg version 1.02
+POE/Component/Enc/Ogg version 1.04
 ==================================
 
 This is a POE component for wrapping the Ogg Vorbis encoder 'oggenc'
@@ -10,14 +10,15 @@ ripper and encoder application. It provides an object oriented interface.
 
 To use this module, you will need the POE framework (See http://poe.perl.org/)
 and you will need to install the OggVorbis tools (See http://www.vorbis.com/).
-
-1.02 is the first public issue of this module.
+For encoding from flac files, you will also need the Free Lossless Audio Codec
+tool (See http://flac.sourceforge.net/).
 
 
 SEE ALSO
 
-    Changes
+    ./Changes
     Vorbis Tools oggenc(1)
+    Free Lossless Audio Codec flac(1)
     POE::Component::Enc::Mp3
     POE::Component::CD::Detect
     POE::Component::CD::Rip
@@ -42,6 +43,7 @@ This module requires the following other modules and libraries.
     POE::Filter::Line
     POE::Driver::SysRW
     oggenc
+    flac (optional, for encoding direct from flac files)
 
 
 COPYRIGHT AND LICENCE

@@ -5,7 +5,7 @@
 #########################
 use strict;
 
-use Test::More tests => 141;
+use Test::More tests => 199;
 
 BEGIN { use_ok('POE::Component::Enc::Ogg') };
 
@@ -17,12 +17,14 @@ my $TEST_INPUT        = 't/test.wav';
 my $TEST_INPUT_COPY   = 't/test2.wav';
 my $TEST_OUTPUT       = 't/test.ogg';
 my $TEST_OUTPUT_COPY  = 't/test_2.ogg';
+my $TEST_INPUT2       = 't/test2.flac';
+my $TEST_OUTPUT2      = 't/test2.ogg';
 
-unlink $TEST_OUTPUT;
+unlink $TEST_OUTPUT, $TEST_OUTPUT2;
 
 #########################
 
-my ($encoder1, $encoder2, $encoder3, $encoder4, $encoder5);
+my ($encoder1, $encoder2, $encoder3, $encoder4, $encoder5, $encoder6);
 
 #########################
 # Check construction with defaults
@@ -86,6 +88,8 @@ $encoder4 = POE::Component::Enc::Ogg->new(%params);
 isa_ok ( $encoder4, 'POE::Component::Enc::Ogg');
 $encoder5 = POE::Component::Enc::Ogg->new(%params2);
 isa_ok ( $encoder5, 'POE::Component::Enc::Ogg');
+$encoder6 = POE::Component::Enc::Ogg->new(%params);
+isa_ok ( $encoder6, 'POE::Component::Enc::Ogg');
 
 
 my $main = POE::Session->create
@@ -119,11 +123,8 @@ sub main_start
     like ($@, qr/No input file specified/);
 
     diag "Start encoder 2 with missing input $TEST_MISSING\n";
-    push @{$expect{$encoder2}}, (
-      'error:256;cannot open:',
-      'error:256;cannot open:',
-    );
-    $encoder2->enc( input=>$TEST_MISSING );
+    is(eval {$encoder2->enc( input=>$TEST_MISSING )}, undef);
+    like ($@, qr/file does not exist/);
 
     diag "Start encoder 3 with $TEST_INPUT\n";
     push @{$expect{$encoder3}}, (
@@ -153,14 +154,33 @@ sub main_start
                     date        => 'A Date',
                     tracknumber => 'A Tracknum',
                   );
-    }
 
   }
+
+  SKIP :
+    {
+    skip "Need the executable 'flac'", 56
+      unless (have_encoder() && have_flac_decoder());
+
+    diag "Start encoder 6 with $TEST_INPUT2\n";
+    push @{$expect{$encoder6}}, (
+      "status:$TEST_INPUT2;$TEST_OUTPUT2;[0-9]+\.[0-9]:+",
+      "done:$TEST_INPUT2;$TEST_OUTPUT2:",
+    );
+    $encoder6->enc( input=>$TEST_INPUT2 );
+  }
+}
 
 sub have_encoder
     {
     1 if (-x '/usr/bin/oggenc' || -x '/usr/local/bin/oggenc')
     or diag "Did not find executable /usr/bin/oggenc or /usr/local/bin/oggenc";
+    }
+
+sub have_flac_decoder
+    {
+    1 if (-x '/usr/bin/flac' || -x '/usr/local/bin/flac')
+    or diag "Did not find executable /usr/bin/flac or /usr/local/bin/flac";
     }
 
 sub have_ogginfo
@@ -178,7 +198,15 @@ sub main_stop
     ok( (-f $TEST_OUTPUT), '# output file created');
     ok( (-f $TEST_OUTPUT_COPY), '# output file created');
     ok( (!-f $TEST_INPUT_COPY), '# input file deleted');
-    }
+
+  }
+
+  SKIP : {
+    skip "Need the executable 'flac'", 1 unless
+      (have_flac_decoder() && have_encoder());
+
+    ok( (-f $TEST_OUTPUT2), '# output file created');
+  }
 
   SKIP :
     {
@@ -202,10 +230,9 @@ sub main_stop
             }
         }
     close INFO;
-    }
+  }
 
-  unlink $TEST_OUTPUT;
-  unlink $TEST_OUTPUT_COPY;
+  unlink $TEST_OUTPUT, $TEST_OUTPUT_COPY, $TEST_OUTPUT2;
   }
 
 sub ok_expecting

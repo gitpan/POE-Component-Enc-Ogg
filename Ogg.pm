@@ -13,7 +13,7 @@ use warnings;
 use Carp;
 use POE qw(Wheel::Run Filter::Line Driver::SysRW);
 
-our $VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
+our $VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
 
 # Create a new encoder object
 sub new {
@@ -48,9 +48,18 @@ sub enc {
 
     croak "No input file specified" unless $self->{input};
 
+    croak "Input file does not exist: '$self->{input}'"
+      unless (-f $self->{input});
+
+    $self->{input} =~ /(.*)\.(.*)$/;
+    my ($path, $ext) = ($1, $2);
+
+    croak "Input file extension must be 'wav' or 'flac': I have '$ext'"
+      unless ($ext eq 'wav' || $ext eq 'flac');
+
     # Output filename is derived from input, unless specified
     unless ($self->{output}) {
-        ($self->{output} = $self->{input}) =~ s/(.*)\.(.*)$/$1.ogg/;
+        $self->{output} = "$path.ogg";
     }
 
     # For posting events to the parent session. Always passes $self as
@@ -107,11 +116,24 @@ sub enc {
                     }
                 }
 
-                # Finally, the input file
-                push @args, $self->{input};
+                # Name of the encoder program we will use
+                my $encoder = 'oggenc';
+
+                # We might need to use a decoder front-end pipe
+                my $decoder = '';
+
+                # If the input is in flac format, use a flac decoder
+                # front-end, and pipe it to the encoder.
+                # Otherwise pass the input file name direct to the encoder
+                if ($ext eq 'flac') {
+                    $decoder = "flac --decode --silent --stdout $self->{input} |";
+                    push @args, '-';
+                } else {
+                    push @args, $self->{input};
+                }
 
                 $heap->{wheel} = POE::Wheel::Run->new(
-                    Program     => 'oggenc',
+                    Program     => $decoder.$encoder,
                     ProgramArgs => \@args,
                     Priority    => $self->{priority},
                     StdioFilter => POE::Filter::Line->new(),
@@ -262,8 +284,9 @@ a CD music ripper and encoder application.
 
 =head1 DESCRIPTION
 
-This POE component encodes wav audio files into Ogg Vorbis format.
-It's merely a wrapper for the F<oggenc> program.
+This POE component encodes wav and flac audio files into Ogg Vorbis format.
+It's merely a wrapper for the F<oggenc> program. For flac files, the flac(1)
+program is also required.
 
 =head1 METHODS
 
@@ -323,7 +346,7 @@ The only mandatory parameter is the name of the file to encode.
 
 =item input
 
-The input file to be encoded. This must be a F<.wav> file.
+The input file to be encoded. This must be a F<.wav> file or a F<.flac> file.
 
 =item output
 
@@ -419,11 +442,11 @@ This module was inspired by Erick Calder's POE::Component::Enc::Mp3
 
 =head1 DATE
 
-$Date: 2004/04/25 21:07:19 $
+$Date: 2004/05/30 21:54:05 $
 
 =head1 VERSION
 
-$Revision: 1.3 $
+$Revision: 1.4 $
 
 =head1 COPYRIGHT AND LICENSE
 
