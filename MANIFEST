@@ -1,0 +1,8 @@
+Changes
+Makefile.PL
+MANIFEST
+Ogg.pm
+README
+.cvsignore
+t/1.t
+t/test.wav
