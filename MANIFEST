@@ -6,4 +6,5 @@ README
 .cvsignore
 t/1.t
 t/test.wav
+t/test2.flac
 META.yml                                 Module meta-data (added by MakeMaker)

@@ -13,7 +13,7 @@ use warnings;
 use Carp;
 use POE qw(Wheel::Run Filter::Line Driver::SysRW);
 
-our $VERSION = sprintf("%d.%02d", q$Revision: 1.4 $ =~ /(\d+)\.(\d+)/);
+our $VERSION = sprintf("%d.%02d", q$Revision: 1.5 $ =~ /(\d+)\.(\d+)/);
 
 # Create a new encoder object
 sub new {
@@ -442,11 +442,11 @@ This module was inspired by Erick Calder's POE::Component::Enc::Mp3
 
 =head1 DATE
 
-$Date: 2004/05/30 21:54:05 $
+$Date: 2004/05/31 08:10:55 $
 
 =head1 VERSION
 
-$Revision: 1.4 $
+$Revision: 1.5 $
 
 =head1 COPYRIGHT AND LICENSE
 

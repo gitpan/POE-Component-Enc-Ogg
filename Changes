@@ -13,3 +13,5 @@ Revision history for Perl extension POE::Component::Enc::OggVorbis.
     as a decoder front-end pipe
   - Croaks if input file name is not .wav or .flac
   - Croaks if input file does not exist
+1.05  Mon May 31 08:10:55 2004
+  - test2.flac was missing from the MANIFEST
