@@ -1,5 +1,5 @@
 #   Ogg Vorbis encoding component for POE
-#   Copyright (c) 2003 Steve James. All rights reserved.
+#   Copyright (c) 2004 Steve James. All rights reserved.
 #
 #   This library is free software; you can redistribute it and/or modify
 #   it under the same terms as Perl itself.
@@ -10,9 +10,10 @@ package POE::Component::Enc::Ogg;
 use 5.008;
 use strict;
 use warnings;
+use Carp;
 use POE qw(Wheel::Run Filter::Line Driver::SysRW);
 
-our $VERSION = sprintf("%d.%02d", q$Revision: 1.2 $ =~ /(\d+)\.(\d+)/);
+our $VERSION = sprintf("%d.%02d", q$Revision: 1.3 $ =~ /(\d+)\.(\d+)/);
 
 # Create a new encoder object
 sub new {
@@ -27,9 +28,8 @@ sub new {
     $self->{quality}   ||= 3;   # Default quality level of 3
     $self->{priority}  ||= 0;   # No priority delta by default
 
-                                # Default events
-    $self->{parent}    ||= 'main';
-    $self->{status}    ||= 'status';
+    $self->{parent}    ||= 'main';    # Default parent
+    $self->{status}    ||= 'status';  # Default events
     $self->{error}     ||= 'error';
     $self->{done}      ||= 'done';
     $self->{warning}   ||= 'warning';
@@ -46,10 +46,11 @@ sub enc {
     my %opts = !defined($opts) ? () : ref($opts) ? %$opts : ($opts, @_);
     %$self = (%$self, %opts);
 
+    croak "No input file specified" unless $self->{input};
+
     # Output filename is derived from input, unless specified
     unless ($self->{output}) {
-        ($self->{output} = $self->{input}) =~ s/(.*)\.(.*)$/$1.ogg/
-            if $self->{input};
+        ($self->{output} = $self->{input}) =~ s/(.*)\.(.*)$/$1.ogg/;
     }
 
     # For posting events to the parent session. Always passes $self as
@@ -60,7 +61,7 @@ sub enc {
         my $event  = shift;
 
         $kernel->post($self->{parent}, $event, $self, @_)
-            or warn "Failed to post to '$self->{parent}': $!";
+            or carp "Failed to post to '$self->{parent}': $!";
     }
 
     POE::Session->create(
@@ -74,23 +75,22 @@ sub enc {
 
                 my @args;   # List of arguments for encoder
 
-                push @args, '--album="'  . $self->{album} .'"'
+                push @args, '--album="'   . $self->{album} .'"'
                     if $self->{album};
 
-                push @args, '--genre="'  . $self->{genre} .'"'
+                push @args, '--genre="'   . $self->{genre} .'"'
                     if $self->{genre};
 
-                push @args, '--title="'  . $self->{title} .'"'
+                push @args, '--title="'   . $self->{title} .'"'
                     if $self->{title};
 
-                push @args, '--date="'  . $self->{date} .'"'
+                push @args, '--date="'    . $self->{date} .'"'
                     if $self->{date};
 
                 push @args, '--artist="'  . $self->{artist} .'"'
                     if $self->{artist};
 
-                push @args, '--output="'  . $self->{output} .'"'
-                    if $self->{output};
+                push @args, '--output="'  . $self->{output} .'"';
 
                 push @args, '--quality="' . $self->{quality} .'"'
                     if $self->{quality};
@@ -231,13 +231,13 @@ POE::Component::Enc::Ogg - POE component to wrap Ogg Vorbis encoder F<oggenc>
   $encoder1->enc(input => "/tmp/track03.wav");
 
   $encoder2 = POE::Component::Enc::Ogg->new(
-    parent    => 'main',
+    parent    => 'MainSession',
     priority  => 10,
     quality   => 6,
-    status    => 'status',
-    error     => 'error',
-    warning   => 'warning',
-    done      => 'done',
+    status    => 'oggStatus',
+    error     => 'oggError',
+    warning   => 'oggWarning',
+    done      => 'oggDone',
     album     => 'Flood',
     genre     => 'Alternative'
     );
@@ -248,7 +248,7 @@ POE::Component::Enc::Ogg - POE component to wrap Ogg Vorbis encoder F<oggenc>
     output      => "/tmp/02.ogg",
     tracknumber => 'Track 2',
     date        => '1990',
-    comment     => ['source=CD', 'loudness=medium']
+    comment     => ['origin=CD', 'loudness=medium']
     );
 
   POE::Kernel->run();
@@ -262,7 +262,7 @@ a CD music ripper and encoder application.
 
 =head1 DESCRIPTION
 
-This POE component encodes raw audio files into Ogg Vorbis format.
+This POE component encodes wav audio files into Ogg Vorbis format.
 It's merely a wrapper for the F<oggenc> program.
 
 =head1 METHODS
@@ -285,7 +285,7 @@ See POE::Wheel:Run(3pm) and nice(1).
 
 =item parent
 
-Indicates the session to which events are posted. By default this
+Names the session to which events are posted. By default this
 is C<main>.
 
 =item quality
@@ -328,7 +328,7 @@ The input file to be encoded. This must be a F<.wav> file.
 =item output
 
 The output file to encode to. This will be a F<.ogg> file. This parameter
-is optional, and if unsoecied the output file will be formed by replacing F<.wav> with F<.ogg> in the input file name.
+is optional, and if unspecied the output file name will be formed by replacing the extension of the input file name with F<.ogg>.
 
 =item delete
 
@@ -377,10 +377,10 @@ equivalent.
 
 =head1 EVENTS
 
-Events are passed to the session specified in the C<new()> method
+Events are passed to the session specified to the C<new()> method
 to indicate progress, completion, warnings and errors. These events are described below, with their default names; alternative names may be specified when calling C<new()>.
 
-The first argument (C<ARG0>) passed with these events is always the instance of the encoder as returned by C<new()>. ARG1 and ARG2 are always the input and output filenames respectively.
+The first argument (C<ARG0>) passed with these events is always the instance of the encoder as returned by C<new()>. ARG1 and ARG2 are always the input and output file names respectively.
 
 
 =head2 status
@@ -404,6 +404,7 @@ This event is sent upon completion of encoding.
 =head1 SEE ALSO
 
 Vorbis Tools oggenc(1),
+L<POE::Component::Enc::Flac>,
 L<POE::Component::Enc::Mp3>,
 L<POE::Component::CD::Detect>,
 L<POE::Component::CD::Rip>.
@@ -412,21 +413,21 @@ http://www.ambrosia.plus.com/perl/modules/POE-Component-Enc-Ogg/
 
 =head1 AUTHOR
 
-Steve James E<lt>ste@cpan.orgE<gt>
+Steve James E<lt>steATcpanDOTorgE<gt>
 
 This module was inspired by Erick Calder's POE::Component::Enc::Mp3
 
 =head1 DATE
 
-$Date: 2003/10/28 22:32:24 $
+$Date: 2004/04/25 21:07:19 $
 
 =head1 VERSION
 
-$Revision: 1.2 $
+$Revision: 1.3 $
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (c) 2003 Steve James
+Copyright (c) 2004 Steve James
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.

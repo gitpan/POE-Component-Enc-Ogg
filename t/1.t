@@ -5,7 +5,7 @@
 #########################
 use strict;
 
-use Test::More tests => 140;
+use Test::More tests => 141;
 
 BEGIN { use_ok('POE::Component::Enc::Ogg') };
 
@@ -40,6 +40,7 @@ $encoder1 = POE::Component::Enc::Ogg->new();
 ok ( $encoder1->isa('POE::Component::Enc::Ogg'), 'it\'s an encoder' );
 can_ok( $encoder1, qw(enc) );
 
+diag("Check parameter defaults");
 foreach (keys %defaults) {
     is ( $encoder1->{$_}, $defaults{$_}, $_ . ' default' );
     }
@@ -74,6 +75,7 @@ my %params2 = (
 $encoder2 = POE::Component::Enc::Ogg->new(%params);
 isa_ok ( $encoder2, 'POE::Component::Enc::Ogg');
 
+diag("Check parameters");
 foreach (keys %params) {
     is ( $encoder2->{$_}, $params{$_}, '# ' . $_ . ' parameter' );
     }
@@ -108,29 +110,39 @@ sub main_start
 
   POE::Kernel->alias_set($params{parent});
 
-  diag "Start encoder 4 with no input\n";
-  push @{$expect{$encoder4}}, 'error:256;no input:';
-  $encoder4->enc();
-
-  diag "Start encoder 2 with missing input $TEST_MISSING\n";
-  push @{$expect{$encoder2}}, 'error:256;cannot open:';
-  $encoder2->enc( input=>$TEST_MISSING );
-
   SKIP :
     {
-    skip "Need the executable 'oggenc'", 110 unless have_encoder();
+    skip "Need the executable 'oggenc'", 107 unless have_encoder();
+
+    diag "Start encoder 4 with no input\n";
+    is(eval {$encoder4->enc()}, undef);
+    like ($@, qr/No input file specified/);
+
+    diag "Start encoder 2 with missing input $TEST_MISSING\n";
+    push @{$expect{$encoder2}}, (
+      'error:256;cannot open:',
+      'error:256;cannot open:',
+    );
+    $encoder2->enc( input=>$TEST_MISSING );
 
     diag "Start encoder 3 with $TEST_INPUT\n";
-    push @{$expect{$encoder3}}, "status:$TEST_INPUT;$TEST_OUTPUT;[0-9]+\.[0-9]:+";
-    push @{$expect{$encoder3}}, "done:$TEST_INPUT;$TEST_OUTPUT:";
+    push @{$expect{$encoder3}}, (
+      "status:$TEST_INPUT;$TEST_OUTPUT;[0-9]+\.[0-9]:+",
+      "done:$TEST_INPUT;$TEST_OUTPUT:",
+    );
     $encoder3->enc( input=>$TEST_INPUT );
 
     copy($TEST_INPUT, $TEST_INPUT_COPY);
 
     diag "Start encoder 5 with invalid quality level\n";
-    push @{$expect{$encoder5}}, 'warning:too high:';
-    push @{$expect{$encoder5}}, 'status::+';
-    push @{$expect{$encoder5}}, "done:$TEST_INPUT_COPY;$TEST_OUTPUT_COPY:";
+    push @{$expect{$encoder5}}, (
+      'warning:too high:',
+      'warning:too high:',
+    );
+    push @{$expect{$encoder5}}, (
+      'status::+',
+      "done:$TEST_INPUT_COPY;$TEST_OUTPUT_COPY:",
+    );
     $encoder5->enc( input       => $TEST_INPUT_COPY,
                     comment     => [
                                     'artist=An Artist',
